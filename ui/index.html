@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Alondra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-deep: #14192b;
+    --sky-mid: #1d2338;
+    --sky-line: #363156;
+    --horizon: #e8734a;
+    --dawn-gold: #f2b76b;
+    --paper: #f4efe4;
+    --muted: #9b93a8;
+    --signal-red: #c2596a;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Work Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  .hidden { display: none !important; }
+
+  .agent-face {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(90vw, 860px);
+    height: auto;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .agent-face .eye { transform-origin: center; transform-box: fill-box; }
+  .agent-face .eye-left { animation: blinkLeft 8s infinite; }
+  .agent-face .eye-right { animation: blinkRight 8s infinite; }
+  .agent-face .mouth { animation: mouthMorph 9s ease-in-out infinite; }
+
+  @keyframes blinkLeft {
+    0%, 18%, 23%, 100% { transform: scaleY(1); }
+    20% { transform: scaleY(0.1); }
+  }
+  @keyframes blinkRight {
+    0%, 18%, 23%, 58%, 64%, 100% { transform: scaleY(1); }
+    20%, 61% { transform: scaleY(0.1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .agent-face .eye-left, .agent-face .eye-right, .agent-face .mouth { animation: none; }
+  }
+  @keyframes mouthMorph {
+    0%, 40% { d: path("M 70 63 Q 100 85 130 63"); }
+    55%, 75% { d: path("M 70 70 Q 100 60 130 75"); }
+    90%, 100% { d: path("M 70 63 Q 100 85 130 63"); }
+  }
+
+  html {
+    background-color: var(--sky-deep);
+    color: var(--paper);
+    font-family: var(--font-body);
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.25rem, 4vw, 2rem) 4rem;
+  }
+
+  a { color: var(--dawn-gold); }
+
+  ::selection { background: var(--horizon); color: var(--sky-deep); }
+
+  :focus-visible {
+    outline: 2px solid var(--dawn-gold);
+    outline-offset: 2px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--sky-line);
+    margin-bottom: 1.75rem;
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .connect-btn {
+    background: none;
+    border: 1px solid var(--sky-line);
+    color: var(--paper);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .connect-btn:hover { border-color: var(--dawn-gold); color: var(--dawn-gold); }
+  .connect-btn.connected { border-color: var(--horizon); color: var(--dawn-gold); font-family: var(--font-mono); font-size: 0.76rem; }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .status.working .status-dot {
+    background: var(--horizon);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .status.done .status-dot { background: var(--dawn-gold); }
+  .status.stopped .status-dot { background: var(--signal-red); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(232,115,74,0.5); }
+      50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(232,115,74,0); }
+    }
+  }
+
+  .panel {
+    background: rgba(29, 35, 56, 0.55);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(54, 49, 86, 0.6);
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.9rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+  }
+
+  /* simple token list */
+  .token-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .token-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(29, 35, 56, 0.6);
+    border: 1px solid rgba(54, 49, 86, 0.6);
+    color: var(--paper);
+    font-family: var(--font-body);
+    text-align: left;
+    cursor: pointer;
+  }
+  .token-row:hover { border-color: var(--dawn-gold); }
+  .token-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--sky-line);
+    object-fit: cover;
+    flex: none;
+  }
+  .token-row .sym { font-weight: 600; font-size: 0.92rem; }
+  .token-row .chain { font-size: 0.75rem; color: var(--muted); }
+  .token-row .row-balance {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--dawn-gold);
+  }
+
+  /* amount step */
+  .swap-panel {
+    background: rgba(20, 25, 43, 0.65);
+    border: 1px solid rgba(54, 49, 86, 0.6);
+    padding: 1.25rem 1.4rem;
+    margin-top: 1rem;
+  }
+  .panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .big-amount {
+    font-family: var(--font-body);
+    font-size: clamp(1.8rem, 6vw, 2.4rem);
+    font-weight: 500;
+    background: none;
+    border: none;
+    color: var(--paper);
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+  }
+  .big-amount:focus { outline: none; }
+  .big-amount::-webkit-outer-spin-button, .big-amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .panel-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sky-line);
+  }
+  .balance-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-right: auto;
+  }
+  .pct-btn {
+    background: var(--sky-mid);
+    border: 1px solid var(--sky-line);
+    color: var(--muted);
+    padding: 0.25rem 0.65rem;
+    font-size: 0.72rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+  }
+  .pct-btn:hover { color: var(--dawn-gold); border-color: var(--dawn-gold); }
+
+  .picked-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(29, 35, 56, 0.6);
+    border: 1px solid rgba(232, 115, 74, 0.5);
+    margin-top: 1rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+  }
+
+  #customAddressBox { margin-top: 1rem; }
+  .dest-input {
+    width: 100%;
+    background: rgba(29, 35, 56, 0.6);
+    border: 1px solid var(--sky-line);
+    padding: 0.75rem 1rem;
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+  .dest-error {
+    color: var(--signal-red);
+    font-size: 0.82rem;
+    margin-top: 0.6rem;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--sky-line);
+  }
+
+  .switch {
+    position: relative;
+    width: 38px;
+    height: 21px;
+    flex: none;
+    margin-top: 2px;
+  }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track {
+    position: absolute; inset: 0;
+    background: var(--sky-deep);
+    border: 1px solid var(--sky-line);
+    border-radius: 999px;
+    transition: background 0.15s;
+  }
+  .switch .thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.15s, background 0.15s;
+  }
+  .switch input:checked ~ .track { background: rgba(232,115,74,0.18); border-color: var(--horizon); }
+  .switch input:checked ~ .thumb { transform: translateX(17px); background: var(--horizon); }
+  .switch input:focus-visible ~ .track { outline: 2px solid var(--dawn-gold); outline-offset: 2px; }
+
+  .toggle-copy .toggle-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--paper);
+  }
+  .toggle-copy .toggle-help {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    line-height: 1.5;
+  }
+
+  .cta {
+    background: var(--horizon);
+    color: var(--sky-deep);
+    border: none;
+    padding: 0.65rem 1.4rem;
+    border-radius: 3px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .cta:hover { background: var(--dawn-gold); }
+  .cta:disabled { background: var(--sky-line); color: var(--muted); cursor: not-allowed; }
+
+  .cta-secondary {
+    background: none;
+    border: 1px solid var(--sky-line);
+    color: var(--muted);
+    padding: 0.65rem 1.2rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+  .cta-secondary:hover { border-color: var(--dawn-gold); color: var(--dawn-gold); }
+
+  .step-panel { text-align: left; }
+  .step-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--horizon);
+    margin-bottom: 0.9rem;
+  }
+  .step-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.6rem;
+  }
+  .step-copy {
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 46ch;
+    margin: 0 0 1.5rem;
+  }
+  .step-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--sky-line);
+  }
+  .connected-pill {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--dawn-gold);
+    border: 1px solid var(--horizon);
+    padding: 0.3rem 0.7rem;
+  }
+
+  /* horizon route visualizer */
+  .horizon-panel { min-height: 128px; }
+  .horizon-track {
+    position: relative;
+    height: 92px;
+    margin: 0.5rem 0 0;
+    border-bottom: 1px solid var(--sky-line);
+  }
+  .horizon-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    font-family: var(--font-body);
+  }
+  .route-point {
+    position: absolute;
+    bottom: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: opacity 0.4s;
+  }
+  .route-point .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-bottom: 4px;
+  }
+  .route-point .wing {
+    font-size: 0.7rem;
+    color: var(--dawn-gold);
+    margin-bottom: 2px;
+    line-height: 1;
+  }
+  .route-point .stem {
+    width: 1px;
+    background: var(--sky-line);
+  }
+  .route-point .tag {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .route-point.excluded { opacity: 0.35; }
+  .route-point.excluded .dot { background: var(--signal-red); }
+  .route-point.chosen .dot { width: 12px; height: 12px; background: var(--dawn-gold); box-shadow: 0 0 10px rgba(242,183,107,0.7); }
+  .route-point.chosen .tag { color: var(--dawn-gold); font-weight: 500; }
+
+  /* flight log */
+  .log-panel { padding: 0.5rem 0; }
+  .log-entries {
+    max-height: 420px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    padding: 0 1.5rem 1rem;
+  }
+  .entry {
+    display: grid;
+    grid-template-columns: 5.5em 1fr;
+    gap: 0.9rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(54,49,86,0.5);
+    line-height: 1.55;
+  }
+  .entry:last-child { border-bottom: none; }
+  .entry .time { color: var(--muted); }
+  .entry .verb {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.72rem;
+    margin-right: 0.6rem;
+  }
+  .entry.scout .verb { color: var(--muted); }
+  .entry.rule-out .verb { color: var(--signal-red); }
+  .entry.chosen .verb { color: var(--dawn-gold); }
+  .entry.departed .verb { color: var(--dawn-gold); }
+  .entry.stopped .verb { color: var(--signal-red); }
+  .entry code { color: var(--paper); font-size: 0.8em; }
+  .entry a { text-decoration: none; border-bottom: 1px dotted var(--dawn-gold); }
+
+  .route-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.78rem; }
+  .route-table th, .route-table td { text-align: left; padding: 0.25rem 0.6rem 0.25rem 0; }
+  .route-table th { color: var(--muted); font-weight: 500; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .route-table tr.excluded td { opacity: 0.4; text-decoration: line-through; }
+  .route-table tr.winner td { color: var(--dawn-gold); }
+</style>
+</head>
+<body>
+  <svg class="agent-face" viewBox="0 0 200 100" aria-hidden="true">
+    <circle class="eye eye-left" cx="70" cy="40" r="10" fill="var(--dawn-gold)" opacity="0.85" />
+    <circle class="eye eye-right" cx="130" cy="40" r="10" fill="var(--dawn-gold)" opacity="0.85" />
+    <path class="mouth" d="M 70 63 Q 100 85 130 63" fill="none" stroke="var(--dawn-gold)" stroke-width="7" stroke-linecap="round" opacity="0.85" />
+  </svg>
+
+  <header>
+    <div class="wordmark">Alondra</div>
+    <div class="status" id="status"><span class="status-dot"></span><span id="statusLabel">standing by</span></div>
+  </header>
+
+  <!-- Step 1: Connect wallet -->
+  <section class="step" id="step1">
+    <div class="panel step-panel">
+      <div class="step-eyebrow">Step 1 of 6</div>
+      <h2 class="step-title">Connect your wallet</h2>
+      <p class="step-copy">Alondra needs to know who to send funds to once it finds the best route across 32 bridges and six chains.</p>
+      <button class="cta" id="connectBtn" type="button">Connect Wallet</button>
+    </div>
+  </section>
+
+  <!-- Step 2: Pick send token -->
+  <section class="step hidden" id="step2">
+    <div class="panel">
+      <div class="step-eyebrow">Step 2 of 6</div>
+      <h2 class="step-title">Choose what to send</h2>
+
+      <div id="sendPicked" class="picked-row hidden">
+        <span id="sendPickedLabel"></span>
+        <button class="cta-secondary" id="changeSend" type="button">Change</button>
+      </div>
+
+      <div class="token-list" id="sendList"></div>
+
+      <div class="step-actions">
+        <button class="cta-secondary" id="backToStep1" type="button">&larr; Back</button>
+        <button class="cta" id="toStep3" type="button" disabled>Continue &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3: Amount -->
+  <section class="step hidden" id="step3">
+    <div class="panel">
+      <div class="step-eyebrow">Step 3 of 6</div>
+      <h2 class="step-title">How much?</h2>
+
+      <div class="swap-panel">
+        <div class="panel-row">
+          <input class="big-amount" id="amount" type="number" value="0" step="any" min="0" placeholder="0" />
+          <span id="amountSym" class="chain"></span>
+        </div>
+        <div class="panel-meta">
+          <span class="balance-label" id="amountBalanceLabel"></span>
+          <button class="pct-btn" data-pct="0.25">25%</button>
+          <button class="pct-btn" data-pct="0.5">50%</button>
+          <button class="pct-btn" data-pct="1">MAX</button>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="cta-secondary" id="backToStep2" type="button">&larr; Back</button>
+        <button class="cta" id="toStep4" type="button" disabled>Continue &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 4: Pick receive token -->
+  <section class="step hidden" id="step4">
+    <div class="panel">
+      <div class="step-eyebrow">Step 4 of 6</div>
+      <h2 class="step-title">Choose what to receive</h2>
+
+      <div id="receivePicked" class="picked-row hidden">
+        <span id="receivePickedLabel"></span>
+        <button class="cta-secondary" id="changeReceive" type="button">Change</button>
+      </div>
+
+      <div class="token-list" id="receiveList"></div>
+
+      <div class="step-actions">
+        <button class="cta-secondary" id="backToStep3" type="button">&larr; Back</button>
+        <button class="cta" id="toStep5" type="button" disabled>Continue &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 5: Destination -->
+  <section class="step hidden" id="step5">
+    <div class="panel">
+      <div class="step-eyebrow">Step 5 of 6</div>
+      <h2 class="step-title">Where should it land?</h2>
+
+      <div id="destPicked" class="picked-row hidden">
+        <span id="destPickedLabel"></span>
+        <button class="cta-secondary" id="changeDest" type="button">Change</button>
+      </div>
+
+      <div class="token-list" id="destList">
+        <button class="token-row" type="button" data-dest="connected">
+          <span class="sym">My connected wallet</span>
+          <span class="chain" id="connectedAddrPreview"></span>
+        </button>
+        <button class="token-row" type="button" data-dest="custom">
+          <span class="sym">Paste an address</span>
+        </button>
+      </div>
+
+      <div id="customAddressBox" class="hidden">
+        <input class="dest-input" id="destAddressInput" type="text" placeholder="0x..." />
+        <button class="cta-secondary" id="confirmCustomAddress" type="button">Use this address</button>
+        <div id="destAddressError" class="dest-error hidden"></div>
+      </div>
+
+      <div class="step-actions">
+        <button class="cta-secondary" id="backToStep4" type="button">&larr; Back</button>
+        <button class="cta" id="finishSetup" type="button" disabled>Continue &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 6: Let it work -->
+  <section class="step hidden" id="step6">
+    <div class="panel">
+      <div class="step-eyebrow">Step 6 of 6</div>
+      <h2 class="step-title" id="summaryTitle"></h2>
+
+      <div class="toggle-row" style="border-top:none; padding-top:0;">
+        <label class="switch">
+          <input type="checkbox" id="execute" />
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+        <div class="toggle-copy">
+          <div class="toggle-label">Let it act</div>
+          <div class="toggle-help">Off &mdash; finds the route and waits for you to confirm before signing anything. On &mdash; signs and sends automatically once it decides, capped at $1000.</div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="cta-secondary" id="backToStep5" type="button">&larr; Back</button>
+        <button class="cta" id="runBtn" type="button">Find the way &rarr;</button>
+      </div>
+
+      <div class="step-actions hidden" id="confirmRow">
+        <span></span>
+        <button class="cta" id="confirmSwapBtn" type="button">Confirm &amp; Swap &rarr;</button>
+      </div>
+    </div>
+
+    <div class="panel horizon-panel">
+      <div class="eyebrow">Where it's looking</div>
+      <div class="horizon-track" id="horizonTrack">
+        <div class="horizon-empty">no routes scouted yet</div>
+      </div>
+    </div>
+
+    <div class="panel log-panel">
+      <div class="eyebrow" style="padding: 0 1.5rem;">Flight log</div>
+      <div class="log-entries" id="logEntries"></div>
+    </div>
+  </section>
+
+<script>
+let tokens = {};
+let heldTokens = {};
+let state = { fromKey: null, toKey: null, destination: null };
+let connectedAddress = null;
+let currentStep = 1;
+
+const STORAGE_KEY = 'alondra_session';
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    step: currentStep,
+    fromKey: state.fromKey,
+    toKey: state.toKey,
+    destination: state.destination,
+    amount: document.getElementById('amount')?.value,
+  }));
+}
+
+function setStatus(mode, label) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + mode;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+function goToStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.step').forEach((el) => el.classList.add('hidden'));
+  document.getElementById('step' + n).classList.remove('hidden');
+  saveState();
+}
+
+async function connectWallet() {
+  if (!window.ethereum) {
+    setStatus('stopped', 'no wallet found');
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    connectedAddress = accounts[0];
+    setStatus('done', `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`);
+    await loadTokens();
+    goToStep(2);
+  } catch (err) {
+    setStatus('stopped', 'connection failed');
+  }
+}
+
+document.getElementById('connectBtn').addEventListener('click', connectWallet);
+document.getElementById('backToStep1').addEventListener('click', () => goToStep(1));
+document.getElementById('backToStep2').addEventListener('click', () => goToStep(2));
+document.getElementById('backToStep3').addEventListener('click', () => goToStep(3));
+document.getElementById('backToStep4').addEventListener('click', () => goToStep(4));
+
+document.getElementById('toStep3').addEventListener('click', () => {
+  const t = tokens[state.fromKey];
+  document.getElementById('amountSym').textContent = `${t.symbol} on ${t.chainName}`;
+  syncAmountToBalance();
+  goToStep(3);
+});
+document.getElementById('toStep4').addEventListener('click', () => {
+  renderReceiveList();
+  goToStep(4);
+});
+document.getElementById('toStep5').addEventListener('click', () => {
+  document.getElementById('connectedAddrPreview').textContent = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
+  goToStep(5);
+});
+
+function updateAmountContinueState() {
+  document.getElementById('toStep4').disabled = !(Number(document.getElementById('amount').value) > 0);
+}
+
+function syncAmountToBalance() {
+  const held = heldTokens[state.fromKey];
+  const label = document.getElementById('amountBalanceLabel');
+  if (held) {
+    document.getElementById('amount').value = Number(held.balance).toPrecision(6).replace(/\.?0+$/, '');
+    label.textContent = `Balance: ${Number(held.balance).toFixed(6)}`;
+  } else {
+    label.textContent = 'Balance: 0';
+  }
+  updateAmountContinueState();
+}
+
+document.querySelectorAll('.pct-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const held = heldTokens[state.fromKey];
+    if (!held) return;
+    document.getElementById('amount').value = (Number(held.balance) * Number(btn.dataset.pct)).toString();
+    updateAmountContinueState();
+  });
+});
+
+document.getElementById('amount').addEventListener('input', () => { updateAmountContinueState(); saveState(); });
+
+function isValidAddress(addr) {
+  return /^0x[0-9a-fA-F]{40}$/.test(addr);
+}
+
+function pickDestination(label, address) {
+  state.destination = address;
+  document.getElementById('destPickedLabel').textContent = label;
+  document.getElementById('destPicked').classList.remove('hidden');
+  document.getElementById('destList').classList.add('hidden');
+  document.getElementById('customAddressBox').classList.add('hidden');
+  document.getElementById('finishSetup').disabled = false;
+  saveState();
+}
+
+document.getElementById('destList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.token-row');
+  if (!btn) return;
+  if (btn.dataset.dest === 'connected') {
+    pickDestination(`My connected wallet (${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)})`, connectedAddress);
+  } else {
+    document.getElementById('destList').classList.add('hidden');
+    document.getElementById('customAddressBox').classList.remove('hidden');
+  }
+});
+
+document.getElementById('confirmCustomAddress').addEventListener('click', () => {
+  const val = document.getElementById('destAddressInput').value.trim();
+  const errEl = document.getElementById('destAddressError');
+  if (!isValidAddress(val)) {
+    errEl.textContent = `"${val}" isn't a valid address.`;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+  pickDestination(`Custom address (${val.slice(0, 6)}...${val.slice(-4)})`, val);
+});
+
+document.getElementById('changeDest').addEventListener('click', () => {
+  state.destination = null;
+  document.getElementById('destPicked').classList.add('hidden');
+  document.getElementById('destList').classList.remove('hidden');
+  document.getElementById('customAddressBox').classList.add('hidden');
+  document.getElementById('finishSetup').disabled = true;
+});
+
+document.getElementById('finishSetup').addEventListener('click', () => {
+  const from = tokens[state.fromKey];
+  const to = tokens[state.toKey];
+  document.getElementById('summaryTitle').textContent =
+    `Send ${document.getElementById('amount').value} ${from.symbol} on ${from.chainName} → ${to.symbol} on ${to.chainName}`;
+  goToStep(6);
+});
+document.getElementById('backToStep5').addEventListener('click', () => goToStep(5));
+
+function timeNow() {
+  return new Date().toLocaleTimeString([], { hour12: false });
+}
+
+function addEntry(verb, cls, html) {
+  const wrap = document.getElementById('logEntries');
+  const div = document.createElement('div');
+  div.className = 'entry ' + cls;
+  div.innerHTML = `<div class="time">${timeNow()}</div><div><span class="verb">${verb}</span><span class="entry-body">${html}</span></div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+
+function startArrivalCountdown(seconds) {
+  if (!seconds || seconds <= 0) return;
+  const entry = addEntry('Arriving', 'departed', `Expected in ~${seconds}s...`);
+  const body = entry.querySelector('.entry-body');
+  let remaining = seconds;
+  const timer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      body.textContent = `Should have arrived by now — check the destination wallet.`;
+      clearInterval(timer);
+    } else {
+      body.textContent = `Expected in ~${remaining}s...`;
+    }
+  }, 1000);
+}
+
+function renderHorizon(summaries, excludedIndexes = [], chosenIndex = null) {
+  const track = document.getElementById('horizonTrack');
+  track.innerHTML = '';
+  if (!summaries || summaries.length === 0) {
+    track.innerHTML = '<div class="horizon-empty">no routes scouted yet</div>';
+    return;
+  }
+  const costs = summaries.map(r => Math.max(r.effectiveCostPct, 0.01));
+  const logs = costs.map(c => Math.log10(c + 0.05));
+  const minLog = Math.min(...logs, Math.log10(0.1));
+  const maxLog = Math.max(...logs, Math.log10(20));
+
+  summaries.forEach((r) => {
+    const logC = Math.log10(Math.max(r.effectiveCostPct, 0.01) + 0.05);
+    const pct = Math.min(96, Math.max(4, ((logC - minLog) / (maxLog - minLog)) * 100));
+    const isExcluded = excludedIndexes.includes(r.index);
+    const isChosen = chosenIndex === r.index;
+    const heightPct = Math.min(80, Math.max(18, pct));
+
+    const point = document.createElement('div');
+    point.className = 'route-point' + (isExcluded ? ' excluded' : '') + (isChosen ? ' chosen' : '');
+    point.style.left = pct + '%';
+    point.title = `${r.bridge} · ${r.effectiveCostPct}% real cost`;
+    point.innerHTML = `
+      ${isChosen ? `<div class="tag">${r.bridge} &middot; ${r.effectiveCostPct}%</div><div class="wing">&#8599;</div>` : ''}
+      <div class="dot"></div>
+      <div class="stem" style="height:${heightPct}px;"></div>
+    `;
+    track.appendChild(point);
+  });
+}
+
+let lastSummaries = null;
+let pendingTxs = null;
+let pendingEstimatedSeconds = null;
+
+document.getElementById('confirmSwapBtn').addEventListener('click', () => {
+  document.getElementById('confirmRow').classList.add('hidden');
+  signAndSendTransactions(pendingTxs);
+});
+
+function renderStep(s) {
+  switch (s.step) {
+    case 'fetch_routes':
+      setStatus('working', 'scouting');
+      addEntry('Scouting', 'scout', `Found ${s.count} live routes.`);
+      break;
+    case 'cap_check':
+      if (!s.passed) {
+        setStatus('stopped', 'stood down');
+        addEntry('Stopped', 'stopped', `Trade is $${s.fromAmountUSD}, cap is $${s.MAX_USD_PER_TX} &mdash; too big to consider.`);
+      } else {
+        addEntry('Cleared', 'scout', `Trade is $${s.fromAmountUSD}, within the $${s.MAX_USD_PER_TX} cap.`);
+      }
+      break;
+    case 'summarize_routes': {
+      lastSummaries = s.summaries;
+      renderHorizon(s.summaries);
+      const top5 = [...s.summaries].sort((a, b) => a.effectiveCostPct - b.effectiveCostPct).slice(0, 5);
+      const rows = top5.map(r => `<tr><td>${r.bridge}</td><td>${r.effectiveCostPct}%</td><td>$${r.outputUSD}</td><td>${r.executionDurationSec ?? '?'}s</td></tr>`).join('');
+      addEntry('Reading', 'scout', `Found ${s.summaries.length} live route${s.summaries.length === 1 ? '' : 's'}. Top ${top5.length} by lowest slippage:<table class="route-table"><tr><th>Bridge</th><th>Real cost</th><th>Arrives with</th><th>Time</th></tr>${rows}</table>`);
+      break;
+    }
+    case 'llm_reasoning_raw':
+      break;
+    case 'llm_decision': {
+      const excluded = s.excludedIndexes || [];
+      if (excluded.length) {
+        const names = excluded.map(i => lastSummaries?.find(r => r.index === i)?.bridge || `#${i}`).join(', ');
+        addEntry('Ruling out', 'rule-out', `${names} &mdash; false signal, not worth following.`);
+      }
+      addEntry('Reasoning', 'scout', s.reasoning);
+      break;
+    }
+    case 'decision':
+      if (s.execute) {
+        setStatus('working', 'chosen');
+        const matched = lastSummaries?.find(r => r.bridge === s.bridge);
+        renderHorizon(lastSummaries, [], matched?.index);
+        addEntry('Chosen', 'chosen', `<b>${s.bridge}</b> &mdash; ${s.effectiveCostPct.toFixed(3)}% real cost.`);
+      } else {
+        setStatus('stopped', 'stood down');
+        addEntry('Stopped', 'stopped', s.reason);
+      }
+      break;
+    case 'ready_to_sign':
+      pendingTxs = s.txs;
+      pendingEstimatedSeconds = s.estimatedSeconds;
+      if (document.getElementById('execute').checked) {
+        signAndSendTransactions(pendingTxs);
+      } else {
+        addEntry('Ready', 'chosen', `Route found and ready &mdash; confirm below to sign and send.`);
+        document.getElementById('confirmRow').classList.remove('hidden');
+      }
+      break;
+    default:
+      addEntry(s.step, 'scout', JSON.stringify(s).slice(0, 300));
+  }
+}
+
+async function signAndSendTransactions(txs) {
+  addEntry('Departing', 'chosen', `Your wallet needs to sign ${txs.length} transaction${txs.length > 1 ? 's' : ''}...`);
+  try {
+    for (const tx of txs) {
+      const chainIdHex = '0x' + tx.chainId.toString(16);
+      const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
+      if (currentChain !== chainIdHex) {
+        addEntry('Switching', 'chosen', `Switching your wallet to chain ${tx.chainId}...`);
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      }
+      addEntry('Signing', 'chosen', `Waiting for you to confirm "${tx.label}" in your wallet...`);
+      const hash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{ from: connectedAddress, to: tx.to, data: tx.data, value: tx.value }],
+      });
+      addEntry('Confirmed', 'departed', `You confirmed "${tx.label}" &mdash; <code>${hash}</code>`);
+    }
+    setStatus('done', 'departed');
+    startArrivalCountdown(pendingEstimatedSeconds);
+  } catch (err) {
+    setStatus('stopped', 'error');
+    addEntry('Error', 'stopped', err.message || 'Transaction rejected or failed.');
+  }
+}
+
+let activeStream = null;
+
+function endRun() {
+  if (activeStream) { activeStream.close(); activeStream = null; }
+  document.getElementById('runBtn').disabled = false;
+}
+
+document.getElementById('runBtn').addEventListener('click', () => {
+  const fromKey = state.fromKey;
+  const toKey = state.toKey;
+  const amount = document.getElementById('amount').value;
+  const destination = state.destination;
+
+  document.getElementById('logEntries').innerHTML = '';
+  lastSummaries = null;
+  pendingTxs = null;
+  pendingEstimatedSeconds = null;
+  document.getElementById('confirmRow').classList.add('hidden');
+  renderHorizon(null);
+
+  if (activeStream) activeStream.close();
+  document.getElementById('runBtn').disabled = true;
+  setStatus('working', 'scouting');
+
+  const url = `/api/run?fromKey=${fromKey}&toKey=${toKey}&amount=${amount}&destination=${destination}&sender=${connectedAddress}`;
+  const es = new EventSource(url);
+  activeStream = es;
+  es.addEventListener('step', (e) => renderStep(JSON.parse(e.data)));
+  es.addEventListener('error', (e) => {
+    setStatus('stopped', 'error');
+    try { addEntry('Error', 'stopped', JSON.parse(e.data).message); } catch {}
+    endRun();
+  });
+  es.addEventListener('done', () => endRun());
+});
+
+function tokenRowHTML(key, t) {
+  return `<button class="token-row" type="button" data-key="${key}">
+      <img class="token-icon" src="${t.logoURI}" alt="" onerror="this.style.visibility='hidden'" />
+      <span class="sym">${t.symbol}</span>
+      <span class="chain">${t.chainName}</span>
+      ${t.balance ? `<span class="row-balance">${Number(t.balance).toFixed(5)}</span>` : ''}
+    </button>`;
+}
+
+/** Held tokens first (with balance), then everything else. */
+function orderedTokenList() {
+  const heldKeys = Object.keys(heldTokens);
+  const restKeys = Object.keys(tokens).filter((k) => !heldTokens[k]);
+  return [...heldKeys.map((k) => [k, heldTokens[k]]), ...restKeys.map((k) => [k, tokens[k]])];
+}
+
+function renderSendList() {
+  document.getElementById('sendList').innerHTML = orderedTokenList().map(([key, t]) => tokenRowHTML(key, t)).join('');
+}
+
+function renderReceiveList() {
+  document.getElementById('receiveList').innerHTML = Object.entries(tokens)
+    .filter(([key]) => key !== state.fromKey)
+    .map(([key, t]) => tokenRowHTML(key, t)).join('');
+}
+
+function pickSend(key) {
+  state.fromKey = key;
+  const t = tokens[key];
+  document.getElementById('sendPickedLabel').textContent = `${t.symbol} on ${t.chainName}`;
+  document.getElementById('sendPicked').classList.remove('hidden');
+  document.getElementById('sendList').classList.add('hidden');
+  document.getElementById('toStep3').disabled = false;
+  saveState();
+}
+
+document.getElementById('sendList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.token-row');
+  if (!btn) return;
+  pickSend(btn.dataset.key);
+});
+
+document.getElementById('changeSend').addEventListener('click', () => {
+  state.fromKey = null;
+  document.getElementById('sendPicked').classList.add('hidden');
+  document.getElementById('sendList').classList.remove('hidden');
+  document.getElementById('toStep3').disabled = true;
+});
+
+function pickReceive(key) {
+  state.toKey = key;
+  const t = tokens[key];
+  document.getElementById('receivePickedLabel').textContent = `${t.symbol} on ${t.chainName}`;
+  document.getElementById('receivePicked').classList.remove('hidden');
+  document.getElementById('receiveList').classList.add('hidden');
+  document.getElementById('toStep5').disabled = false;
+  saveState();
+}
+
+document.getElementById('receiveList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.token-row');
+  if (!btn) return;
+  pickReceive(btn.dataset.key);
+});
+
+document.getElementById('changeReceive').addEventListener('click', () => {
+  state.toKey = null;
+  document.getElementById('receivePicked').classList.add('hidden');
+  document.getElementById('receiveList').classList.remove('hidden');
+  document.getElementById('toStep5').disabled = true;
+});
+
+async function loadTokens() {
+  const [allTokens, held] = await Promise.all([
+    fetch('/api/tokens').then(r => r.json()),
+    fetch(`/api/wallet-tokens?address=${connectedAddress}`).then(r => r.json()),
+  ]);
+  tokens = allTokens;
+  heldTokens = held;
+  renderSendList();
+}
+
+async function tryRestoreSession() {
+  if (!window.ethereum) return;
+  let accounts;
+  try {
+    accounts = await window.ethereum.request({ method: 'eth_accounts' }); // silent, no popup
+  } catch {
+    return;
+  }
+  if (!accounts.length) return;
+
+  connectedAddress = accounts[0];
+  setStatus('done', `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`);
+  await loadTokens();
+
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+  if (!saved) { goToStep(2); return; }
+
+  if (saved.fromKey && tokens[saved.fromKey]) pickSend(saved.fromKey);
+  if (saved.amount) {
+    document.getElementById('amount').value = saved.amount;
+    updateAmountContinueState();
+  }
+  if (saved.toKey && tokens[saved.toKey]) {
+    renderReceiveList();
+    pickReceive(saved.toKey);
+  }
+  if (saved.destination) {
+    document.getElementById('connectedAddrPreview').textContent = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
+    if (saved.destination.toLowerCase() === connectedAddress.toLowerCase()) {
+      pickDestination(`My connected wallet (${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)})`, connectedAddress);
+    } else {
+      pickDestination(`Custom address (${saved.destination.slice(0, 6)}...${saved.destination.slice(-4)})`, saved.destination);
+    }
+  }
+
+  const step = Math.min(Math.max(saved.step || 2, 2), 6);
+  if (step === 6 && tokens[state.fromKey] && tokens[state.toKey]) {
+    const from = tokens[state.fromKey];
+    const to = tokens[state.toKey];
+    document.getElementById('summaryTitle').textContent =
+      `Send ${document.getElementById('amount').value} ${from.symbol} on ${from.chainName} → ${to.symbol} on ${to.chainName}`;
+  }
+  goToStep(step);
+}
+
+tryRestoreSession();
+</script>
+</body>
+</html>
