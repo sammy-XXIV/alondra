@@ -83,5 +83,9 @@ app.get("/api/run", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3300;
-app.listen(PORT, () => console.log(`Guardian bridge agent server listening on http://localhost:${PORT}`));
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3300;
+  app.listen(PORT, () => console.log(`Guardian bridge agent server listening on http://localhost:${PORT}`));
+}
+
+export default app;
