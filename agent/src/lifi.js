@@ -56,3 +56,14 @@ export function effectiveCostPct(route) {
 export function routeBridgeName(route) {
   return route.steps.map((s) => s.toolDetails.name).join(" + ");
 }
+
+/** Resolve any token LI.FI knows about on a given chain, by symbol, name, or address --
+ *  this is what lets someone type "LMT" on Base and get back the real token, not just
+ *  the handful of tokens we've hardcoded (native + USDC per chain). */
+export async function searchToken({ chainId, query }) {
+  const res = await fetch(`${LIFI_BASE}/token?chain=${chainId}&token=${encodeURIComponent(query)}`, {
+    headers: lifiHeaders(),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}

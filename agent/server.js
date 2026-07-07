@@ -4,7 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { decideBestRoute } from "./src/reasoningLoop.js";
 import { buildSignableTransactions } from "./src/buildTx.js";
-import { allKnownTokens, detectHeldTokens } from "./src/walletTokens.js";
+import { allKnownTokens, detectHeldTokens, getTokenBalance, CHAINS } from "./src/walletTokens.js";
+import { searchToken } from "./src/lifi.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -29,6 +30,43 @@ app.get("/api/wallet-tokens", async (req, res) => {
   }
 });
 
+// Resolve any token LI.FI knows about on a chain (not just the hardcoded list) --
+// e.g. LMT on Base -- and, if a wallet address is given, its live balance there.
+app.get("/api/token-search", async (req, res) => {
+  try {
+    const chainId = Number(req.query.chainId);
+    const query = (req.query.query || "").trim();
+    if (!chainId || !CHAINS[chainId]) throw new Error("Unknown or missing chainId.");
+    if (!query) throw new Error("Missing search query.");
+
+    const token = await searchToken({ chainId, query });
+    if (!token) return res.status(404).json({ message: `No token matching "${query}" on ${CHAINS[chainId].name}.` });
+
+    const result = {
+      chainId,
+      chainName: CHAINS[chainId].name,
+      symbol: token.symbol,
+      name: token.name,
+      address: token.address,
+      decimals: token.decimals,
+      logoURI: token.logoURI,
+      priceUSD: token.priceUSD,
+    };
+
+    if (req.query.address) {
+      try {
+        result.balance = await getTokenBalance(chainId, token.address, token.decimals, req.query.address);
+      } catch {
+        result.balance = null;
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 app.get("/api/run", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -41,9 +79,12 @@ app.get("/api/run", async (req, res) => {
   };
 
   try {
-    const { fromKey, toKey, amount, destination, sender } = req.query;
-    const from = TOKENS[fromKey];
-    const to = TOKENS[toKey];
+    const { fromKey, toKey, fromToken, toToken, amount, destination, sender } = req.query;
+    // Known tokens are looked up by key; searched tokens (anything LI.FI resolves
+    // that isn't in the hardcoded list) arrive as an explicit JSON blob instead,
+    // since they were never registered server-side.
+    const from = fromToken ? JSON.parse(fromToken) : TOKENS[fromKey];
+    const to = toToken ? JSON.parse(toToken) : TOKENS[toKey];
     if (!from || !to) throw new Error("Unknown token selection.");
     if (!sender) throw new Error("Missing sender (connected wallet address).");
 

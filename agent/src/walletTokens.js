@@ -41,6 +41,17 @@ export function allKnownTokens() {
   return out;
 }
 
+/** Live balance of one specific token (any address, not just the hardcoded list) for a wallet. */
+export async function getTokenBalance(chainId, tokenAddress, decimals, walletAddress) {
+  const chain = CHAINS[chainId];
+  if (!chain) throw new Error(`Unsupported chain: ${chainId}`);
+  const provider = new JsonRpcProvider(chain.rpc, chainId, { staticNetwork: true });
+  const raw = tokenAddress.toLowerCase() === NATIVE
+    ? await provider.getBalance(walletAddress)
+    : await new Contract(tokenAddress, erc20Abi, provider).balanceOf(walletAddress);
+  return formatUnits(raw, decimals);
+}
+
 /** Which of those tokens does this wallet actually hold (balance > 0), on-chain, right now. */
 export async function detectHeldTokens(address) {
   const known = allKnownTokens();

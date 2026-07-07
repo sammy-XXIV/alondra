@@ -207,6 +207,36 @@
     color: var(--dawn-gold);
   }
 
+  .token-search-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .search-chain-select {
+    background: rgba(29, 35, 56, 0.6);
+    border: 1px solid var(--sky-line);
+    color: var(--paper);
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    padding: 0 0.6rem;
+    flex: none;
+  }
+  .search-token-input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(29, 35, 56, 0.6);
+    border: 1px solid var(--sky-line);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    padding: 0.65rem 0.9rem;
+  }
+  .search-error {
+    color: var(--signal-red);
+    font-size: 0.82rem;
+    margin-top: 0.6rem;
+  }
+
   /* amount step */
   .swap-panel {
     background: rgba(20, 25, 43, 0.65);
@@ -530,6 +560,21 @@
 
       <div class="token-list" id="sendList"></div>
 
+      <div class="token-search-row">
+        <select class="search-chain-select" id="sendSearchChain">
+          <option value="1">Ethereum</option>
+          <option value="42161">Arbitrum</option>
+          <option value="8453" selected>Base</option>
+          <option value="10">Optimism</option>
+          <option value="56">BNB Chain</option>
+          <option value="137">Polygon</option>
+        </select>
+        <input class="search-token-input" id="sendSearchInput" type="text" placeholder="Search any token by symbol or address (e.g. LMT)" />
+        <button class="cta-secondary" id="sendSearchBtn" type="button">Search</button>
+      </div>
+      <div class="token-list hidden" id="sendSearchResult"></div>
+      <div class="search-error hidden" id="sendSearchError"></div>
+
       <div class="step-actions">
         <button class="cta-secondary" id="backToStep1" type="button">&larr; Back</button>
         <button class="cta" id="toStep3" type="button" disabled>Continue &rarr;</button>
@@ -575,6 +620,21 @@
       </div>
 
       <div class="token-list" id="receiveList"></div>
+
+      <div class="token-search-row">
+        <select class="search-chain-select" id="receiveSearchChain">
+          <option value="1">Ethereum</option>
+          <option value="42161">Arbitrum</option>
+          <option value="8453" selected>Base</option>
+          <option value="10">Optimism</option>
+          <option value="56">BNB Chain</option>
+          <option value="137">Polygon</option>
+        </select>
+        <input class="search-token-input" id="receiveSearchInput" type="text" placeholder="Search any token by symbol or address (e.g. LMT)" />
+        <button class="cta-secondary" id="receiveSearchBtn" type="button">Search</button>
+      </div>
+      <div class="token-list hidden" id="receiveSearchResult"></div>
+      <div class="search-error hidden" id="receiveSearchError"></div>
 
       <div class="step-actions">
         <button class="cta-secondary" id="backToStep3" type="button">&larr; Back</button>
@@ -958,10 +1018,45 @@ async function signAndSendTransactions(txs) {
     }
     setStatus('done', 'departed');
     startArrivalCountdown(pendingEstimatedSeconds);
+    setTimeout(resetToHomepage, 2000);
   } catch (err) {
     setStatus('stopped', 'error');
     addEntry('Error', 'stopped', err.message || 'Transaction rejected or failed.');
   }
+}
+
+/** After a completed swap, wipe the picked tokens/amount/destination -- a new
+ *  swap should never start pre-filled with the last one's choices. */
+function resetToHomepage() {
+  state = { fromKey: null, toKey: null, destination: null };
+  localStorage.removeItem(STORAGE_KEY);
+
+  document.getElementById('sendPicked').classList.add('hidden');
+  document.getElementById('sendList').classList.remove('hidden');
+  document.querySelector('#step2 .token-search-row').classList.remove('hidden');
+  document.getElementById('sendSearchResult').classList.add('hidden');
+  document.getElementById('sendSearchError').classList.add('hidden');
+  document.getElementById('sendSearchInput').value = '';
+  document.getElementById('toStep3').disabled = true;
+
+  document.getElementById('amount').value = '';
+  updateAmountContinueState();
+
+  document.getElementById('receivePicked').classList.add('hidden');
+  document.getElementById('receiveList').classList.remove('hidden');
+  document.querySelector('#step4 .token-search-row').classList.remove('hidden');
+  document.getElementById('receiveSearchResult').classList.add('hidden');
+  document.getElementById('receiveSearchError').classList.add('hidden');
+  document.getElementById('receiveSearchInput').value = '';
+  document.getElementById('toStep5').disabled = true;
+
+  document.getElementById('destPicked').classList.add('hidden');
+  document.getElementById('destList').classList.remove('hidden');
+  document.getElementById('customAddressBox').classList.add('hidden');
+  document.getElementById('destAddressInput').value = '';
+  document.getElementById('finishSetup').disabled = true;
+
+  goToStep(1);
 }
 
 let activeStream = null;
@@ -988,7 +1083,12 @@ document.getElementById('runBtn').addEventListener('click', () => {
   document.getElementById('runBtn').disabled = true;
   setStatus('working', 'scouting');
 
-  const url = `/api/run?fromKey=${fromKey}&toKey=${toKey}&amount=${amount}&destination=${destination}&sender=${connectedAddress}`;
+  const params = new URLSearchParams({
+    fromKey, toKey, amount, destination, sender: connectedAddress,
+    fromToken: JSON.stringify(tokens[fromKey]),
+    toToken: JSON.stringify(tokens[toKey]),
+  });
+  const url = `/api/run?${params}`;
   const es = new EventSource(url);
   activeStream = es;
   es.addEventListener('step', (e) => renderStep(JSON.parse(e.data)));
@@ -1032,6 +1132,8 @@ function pickSend(key) {
   document.getElementById('sendPickedLabel').textContent = `${t.symbol} on ${t.chainName}`;
   document.getElementById('sendPicked').classList.remove('hidden');
   document.getElementById('sendList').classList.add('hidden');
+  document.getElementById('sendSearchResult').classList.add('hidden');
+  document.querySelector('#step2 .token-search-row').classList.add('hidden');
   document.getElementById('toStep3').disabled = false;
   saveState();
 }
@@ -1046,6 +1148,7 @@ document.getElementById('changeSend').addEventListener('click', () => {
   state.fromKey = null;
   document.getElementById('sendPicked').classList.add('hidden');
   document.getElementById('sendList').classList.remove('hidden');
+  document.querySelector('#step2 .token-search-row').classList.remove('hidden');
   document.getElementById('toStep3').disabled = true;
 });
 
@@ -1055,6 +1158,8 @@ function pickReceive(key) {
   document.getElementById('receivePickedLabel').textContent = `${t.symbol} on ${t.chainName}`;
   document.getElementById('receivePicked').classList.remove('hidden');
   document.getElementById('receiveList').classList.add('hidden');
+  document.getElementById('receiveSearchResult').classList.add('hidden');
+  document.querySelector('#step4 .token-search-row').classList.add('hidden');
   document.getElementById('toStep5').disabled = false;
   saveState();
 }
@@ -1069,7 +1174,55 @@ document.getElementById('changeReceive').addEventListener('click', () => {
   state.toKey = null;
   document.getElementById('receivePicked').classList.add('hidden');
   document.getElementById('receiveList').classList.remove('hidden');
+  document.querySelector('#step4 .token-search-row').classList.remove('hidden');
   document.getElementById('toStep5').disabled = true;
+});
+
+/** Search LI.FI for any token on a given chain (symbol, name, or address) --
+ *  covers everything the hardcoded native+USDC list doesn't, e.g. LMT on Base. */
+async function runTokenSearch(kind) {
+  const chainId = document.getElementById(`${kind}SearchChain`).value;
+  const query = document.getElementById(`${kind}SearchInput`).value.trim();
+  const resultEl = document.getElementById(`${kind}SearchResult`);
+  const errEl = document.getElementById(`${kind}SearchError`);
+  errEl.classList.add('hidden');
+  resultEl.classList.add('hidden');
+  resultEl.innerHTML = '';
+  if (!query) return;
+
+  try {
+    const params = new URLSearchParams({ chainId, query });
+    if (connectedAddress) params.set('address', connectedAddress);
+    const res = await fetch(`/api/token-search?${params}`);
+    const t = await res.json();
+    if (!res.ok) throw new Error(t.message || 'Token not found.');
+
+    const key = `${t.chainId}-${t.address.toLowerCase()}`;
+    tokens[key] = t;
+    if (kind === 'send' && t.balance && Number(t.balance) > 0) heldTokens[key] = t;
+
+    resultEl.innerHTML = tokenRowHTML(key, t);
+    resultEl.classList.remove('hidden');
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+document.getElementById('sendSearchBtn').addEventListener('click', () => runTokenSearch('send'));
+document.getElementById('receiveSearchBtn').addEventListener('click', () => runTokenSearch('receive'));
+document.getElementById('sendSearchInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') runTokenSearch('send'); });
+document.getElementById('receiveSearchInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') runTokenSearch('receive'); });
+
+document.getElementById('sendSearchResult').addEventListener('click', (e) => {
+  const btn = e.target.closest('.token-row');
+  if (!btn) return;
+  pickSend(btn.dataset.key);
+});
+document.getElementById('receiveSearchResult').addEventListener('click', (e) => {
+  const btn = e.target.closest('.token-row');
+  if (!btn) return;
+  pickReceive(btn.dataset.key);
 });
 
 async function loadTokens() {
