@@ -4,9 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.17.0",
     "express": "^5.2.1",
-    "openai": "^4.63.0"
+    "openai": "^4.63.0",
+    "zod": "^3.25.76"
   }
 }

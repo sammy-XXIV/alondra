@@ -6,6 +6,8 @@ import { decideBestRoute } from "./src/reasoningLoop.js";
 import { buildSignableTransactions } from "./src/buildTx.js";
 import { allKnownTokens, detectHeldTokens, getTokenBalance, CHAINS } from "./src/walletTokens.js";
 import { searchToken } from "./src/lifi.js";
+import { createMcpServer } from "./src/mcpServer.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -122,6 +124,34 @@ app.get("/api/run", async (req, res) => {
   } finally {
     res.end();
   }
+});
+
+// MCP endpoint for OKX.AI (A2MCP) and any other MCP-compatible caller --
+// stateless HTTP: a fresh server+transport per request, since nothing here
+// can rely on process state surviving between serverless invocations.
+app.post("/mcp", async (req, res) => {
+  try {
+    const server = createMcpServer();
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on("close", () => {
+      transport.close();
+      server.close();
+    });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: err.message }, id: null });
+    }
+  }
+});
+
+app.get("/mcp", (_req, res) => {
+  res.status(405).json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed -- this MCP endpoint is stateless, POST only." }, id: null });
+});
+
+app.delete("/mcp", (_req, res) => {
+  res.status(405).json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed -- this MCP endpoint is stateless, no sessions to delete." }, id: null });
 });
 
 if (!process.env.VERCEL) {
